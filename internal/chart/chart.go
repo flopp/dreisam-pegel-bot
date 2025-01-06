@@ -31,7 +31,7 @@ func drawBoxed(dc *gg.Context, s string, x, y float64, center bool) {
 
 func RenderChart(data pegel.PegelData) ([]byte, error) {
 	w := 7 * 24 * 4
-	h := 200
+	h := 400
 	dc := gg.NewContext(w, h)
 	dc.SetHexColor("#FFFFFF")
 	dc.Clear()
@@ -39,10 +39,14 @@ func RenderChart(data pegel.PegelData) ([]byte, error) {
 	oneWeekAgo := data.Pegel.TimeStamp.Add(-7 * 24 * time.Hour)
 	for _, d := range data.Chart {
 		x := d.TimeStamp.Sub(oneWeekAgo).Hours() * 4
-		y := float64(d.Value)
+		y := float64(2 * d.Value)
 
 		dc.DrawLine(x, float64(h), x, float64(h)-y)
-		dc.SetHexColor("#0000FF")
+		if d.Value >= 105 {
+			dc.SetHexColor("#FF0000")
+		} else {
+			dc.SetHexColor("#0000FF")
+		}
 		dc.Stroke()
 	}
 
@@ -51,18 +55,33 @@ func RenderChart(data pegel.PegelData) ([]byte, error) {
 		dd := today.AddDate(0, 0, -d)
 		x := float64(dd.Sub(oneWeekAgo).Hours() * 4)
 		dc.DrawLine(x, 0, x, float64(h))
+		dc.SetDash(2, 10)
 		dc.SetHexColor("#000000")
 		dc.Stroke()
 
 		drawBoxed(dc, dd.Format("2006-01-02"), x, float64(h-2), true)
 	}
 
-	for y := 105; y <= 145; y += 20 {
+	for limit := 105; limit <= 145; limit += 20 {
+		y := 2 * limit
+
 		dc.DrawLine(0, float64(h-y), float64(w), float64(h-y))
-		dc.SetHexColor("#FF0000")
+		dc.SetDash()
+		dc.SetHexColor("#000000")
 		dc.Stroke()
 
-		drawBoxed(dc, fmt.Sprintf("%dcm", y), 0+1, float64(h-y+2), false)
+		drawBoxed(dc, fmt.Sprintf("%dcm (Sperrstufe %d)", limit, (limit-105)/20+1), 1, float64(h-y), false)
+	}
+
+	for _, i := range []int{25, 50, 75, 175} {
+		y := 2 * i
+
+		dc.DrawLine(0, float64(h-y), float64(w), float64(h-y))
+		dc.SetDash(2, 10)
+		dc.SetHexColor("#000000")
+		dc.Stroke()
+
+		drawBoxed(dc, fmt.Sprintf("%dcm", i), 1, float64(h-y), false)
 	}
 
 	drawBoxed(dc, fmt.Sprintf("Dreisam-Pegel: %dcm (%s)", data.Pegel.Value, data.Pegel.TimeStamp.Format(pegel.TimeLayout)), 1, 14, false)

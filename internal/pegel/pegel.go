@@ -120,6 +120,7 @@ type TimeValue struct {
 type PegelData struct {
 	Pegel TimeValue
 	Trend []int64
+	Chart []TimeValue
 }
 
 func GetPegel(dataDir string) (TimeValue, error) {
@@ -233,5 +234,13 @@ func GetPegelData(dataDir string) (PegelData, error) {
 		trend = append(trend, data[i].Value-data[i-1].Value)
 	}
 
-	return PegelData{pegel, trend}, nil
+	oneWeekAgo := pegel.TimeStamp.Add(-7 * 24 * time.Hour)
+	chart := make([]TimeValue, 0, 7*24*4)
+	for _, d := range data {
+		if d.TimeStamp.After(oneWeekAgo) {
+			chart = append(chart, d)
+		}
+	}
+
+	return PegelData{pegel, trend, chart}, nil
 }

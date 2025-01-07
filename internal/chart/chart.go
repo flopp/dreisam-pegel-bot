@@ -68,15 +68,17 @@ func RenderChart(data pegel.PegelData) ([]byte, error) {
 	}
 
 	today := startOfDay(data.Pegel.TimeStamp)
-	for d := 0; d < 7; d += 1 {
+	for d := -1; d < 7; d += 1 {
 		dd := today.AddDate(0, 0, -d)
+		ddNext := dd.AddDate(0, 0, 1)
 		x := float64(dd.Sub(oneWeekAgo).Hours() * 4)
+		xNext := float64(ddNext.Sub(oneWeekAgo).Hours() * 4)
 		dc.DrawLine(x, 0, x, float64(h))
 		dc.SetDash(2, 10)
 		dc.SetHexColor("#000000")
 		dc.Stroke()
 
-		drawBoxed(dc, dd.Format("2006-01-02"), x, float64(h-2), true)
+		drawBoxed(dc, dd.Format("2006-01-02"), (x+xNext)/2, float64(h-2), true)
 	}
 
 	for limit := 105; limit <= 145; limit += 20 {

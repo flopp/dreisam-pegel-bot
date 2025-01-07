@@ -29,6 +29,18 @@ func drawBoxed(dc *gg.Context, s string, x, y float64, center bool) {
 	dc.DrawString(s, x, y)
 }
 
+func drawBar(dc *gg.Context, h int, x int, value int) {
+	y := 2 * value
+	dc.DrawLine(float64(x), float64(h), float64(x), float64(h-y))
+	if value >= 105 {
+		dc.SetHexColor("#FF0000")
+	} else {
+		dc.SetHexColor("#0000FF")
+	}
+	dc.Stroke()
+
+}
+
 func RenderChart(data pegel.PegelData) ([]byte, error) {
 	w := 7 * 24 * 4
 	h := 400
@@ -37,17 +49,22 @@ func RenderChart(data pegel.PegelData) ([]byte, error) {
 	dc.Clear()
 
 	oneWeekAgo := data.Pegel.TimeStamp.Add(-7 * 24 * time.Hour)
+	last_x := 0
+	last_v := -1
 	for _, d := range data.Chart {
-		x := d.TimeStamp.Sub(oneWeekAgo).Hours() * 4
-		y := float64(2 * d.Value)
+		x := int(d.TimeStamp.Sub(oneWeekAgo).Hours() * 4)
 
-		dc.DrawLine(x, float64(h), x, float64(h)-y)
-		if d.Value >= 105 {
-			dc.SetHexColor("#FF0000")
-		} else {
-			dc.SetHexColor("#0000FF")
+		// interpolate missing values
+		if last_v >= 0 && x > last_x+1 {
+			d_v := float64(int(d.Value)-last_v) / float64(x-last_x)
+			for xx := last_x + 1; xx < x; xx += 1 {
+				drawBar(dc, h, xx, last_v+int(float64(xx-last_x)*d_v))
+			}
 		}
-		dc.Stroke()
+
+		drawBar(dc, h, x, int(d.Value))
+		last_x = x
+		last_v = int(d.Value)
 	}
 
 	today := startOfDay(data.Pegel.TimeStamp)

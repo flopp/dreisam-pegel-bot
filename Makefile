@@ -11,7 +11,7 @@ run:
 run-bot:
 	go run cmd/bot/main.go production-config.json .data
 
-.bin/bot-linux: cmd/bot/main.go internal/pegel/*.go go.mod 
+.bin/bot-linux: cmd/bot/main.go internal/pegel/*.go internal/chart/*.go go.mod
 	mkdir -p .bin
 	GOOS=linux GOARCH=amd64 go build -o .bin/bot-linux cmd/bot/main.go
 

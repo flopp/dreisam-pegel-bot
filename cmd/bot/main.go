@@ -34,20 +34,6 @@ func createMessage(data pegel.PegelData) (string, bool) {
 
 	message := fmt.Sprintf("Dreisam-Pegel: %dcm (%s)\n", data.Pegel.Value, data.Pegel.TimeStamp.Format("2006-01-02 15:04"))
 
-	trend := ""
-	for _, t := range data.Trend {
-		if t > 0 {
-			trend += "⬆️"
-		} else if t < 0 {
-			trend += "⬇️"
-		} else {
-			trend += "⏺"
-		}
-	}
-	if len(trend) > 0 {
-		message += fmt.Sprintf("Trend: %s\n", trend)
-	}
-
 	stufe := 0
 	if data.Pegel.Value >= 145 {
 		stufe = 3

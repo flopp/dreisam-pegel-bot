@@ -14,11 +14,14 @@ https://freiburg.social/@dreisampegel
 
 ## Some Images:
 
-The "normal" chart (no critical water level); current time is on the right, 1 week history to the left.
+The "normal" chart (no critical water level); current time is on the right, 1 week history to the left:
+
 ![Normal chart](/images/pegel.png)
 
 The "critical" chart (water level > 105cm); note that there are three official criticality levels (105cm, 125cm, 145cm) at which the official perform certain actions (e.g. closure of paths along the river, etc.) - they are marked as horizontal lines.  
+
 ![Chart with critical water level](/images/pegel-critical.png)
 
 The actual measuring station near Freiburg-Ebnet:
+
 ![The actual measuring station](/images/dreisam.jpg)

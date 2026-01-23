@@ -42,39 +42,89 @@ func download(url string) ([]byte, error) {
 	return body, nil
 }
 
-var rePegel = regexp.MustCompile(`^\s*\['00389','Ebnet','Dreisam',3,'(\d+)','cm','(\d\d)\.(\d\d)\.(\d\d\d\d) (\d\d):(\d\d) [A-Z]+',`)
+var reArray = regexp.MustCompile(`^\s*\[(.*?)\]\s*,?\s*$`)
+
+func splitLine(line string) []string {
+	tokens := make([]string, 0)
+
+	// extract array content
+	m := reArray.FindStringSubmatch(line)
+	if m == nil {
+		return tokens
+	}
+	line = m[1]
+
+	// split comma separated "line"; ignore commas inside quotes; ignore spaces around tokens
+	// e.g. "'hello' ,123, 'a,b,c' ,1"
+	// --> ["hello", "123", "a,b,c", "1"]
+	inQuotes := false
+	var current strings.Builder
+	for _, ch := range line {
+		if ch == '\'' {
+			inQuotes = !inQuotes
+		} else if ch == ',' && !inQuotes {
+			token := strings.TrimSpace(current.String())
+			if token != "" {
+				tokens = append(tokens, strings.Trim(token, "'"))
+			}
+			current.Reset()
+		} else {
+			current.WriteRune(ch)
+		}
+	}
+	token := strings.TrimSpace(current.String())
+	if token != "" {
+		tokens = append(tokens, strings.Trim(token, "'"))
+	}
+
+	return tokens
+}
+
+var reTimeValue = regexp.MustCompile(`^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}) [A-Z]+$`)
 
 func parseLine(line string) (TimeValue, error) {
-	m := rePegel.FindStringSubmatch(line)
+	tokens := splitLine(line)
+
+	if len(tokens) < 7 {
+		return TimeValue{}, fmt.Errorf("cannot parse data line (not enough tokens): %v", line)
+	}
+
+	pegelS := tokens[4]
+	dateS := tokens[6]
+
+	// parse pegel
+	if pegelS == "--" {
+		return TimeValue{}, fmt.Errorf("pegel value is missing ('--'): %v", line)
+	}
+	pegel, err := strconv.Atoi(pegelS)
+	if err != nil {
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", pegelS, line)
+	}
+
+	// parse date
+	m := reTimeValue.FindStringSubmatch(dateS)
 	if m == nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line: %v", line)
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid date '%s'): %v", dateS, line)
 	}
-
-	pegel, err := strconv.Atoi(m[1])
+	day, err := strconv.Atoi(m[1])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", m[1], line)
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid day '%s'): %v", m[1], line)
 	}
-
-	year, err := strconv.Atoi(m[4])
-	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid year '%s'): %v", m[4], line)
-	}
-	month, err := strconv.Atoi(m[3])
-	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid month '%s'): %v", m[3], line)
-	}
-	day, err := strconv.Atoi(m[2])
+	month, err := strconv.Atoi(m[2])
 	if err != nil {
 		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid month '%s'): %v", m[2], line)
 	}
-
-	hh, err := strconv.Atoi(m[5])
+	year, err := strconv.Atoi(m[3])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid hour '%s'): %v", m[5], line)
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid year '%s'): %v", m[3], line)
 	}
-	mm, err := strconv.Atoi(m[6])
+	hh, err := strconv.Atoi(m[4])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid minute '%s'): %v", m[6], line)
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid hour '%s'): %v", m[4], line)
+	}
+	mm, err := strconv.Atoi(m[5])
+	if err != nil {
+		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid minute '%s'): %v", m[5], line)
 	}
 
 	return TimeValue{time.Date(year, time.Month(month), day, hh, mm, 0, 0, time.UTC), int64(pegel)}, nil

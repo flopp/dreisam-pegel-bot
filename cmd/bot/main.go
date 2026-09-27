@@ -96,7 +96,7 @@ func main() {
 
 	mastodonConfig, err := readMastodonConfig(configFile)
 	if err != nil {
-		panic(fmt.Errorf("failed to get read mastodon config: %w", err))
+		panic(fmt.Errorf("failed to read mastodon config: %w", err))
 	}
 
 	client := mastodon.NewClient(&mastodonConfig)

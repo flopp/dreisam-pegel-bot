@@ -93,12 +93,13 @@ func parseLine(line string) (TimeValue, error) {
 	dateS := tokens[6]
 
 	// parse pegel
-	if pegelS == "--" {
-		return TimeValue{}, fmt.Errorf("pegel value is missing ('--'): %v", line)
-	}
-	pegel, err := strconv.Atoi(pegelS)
-	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", pegelS, line)
+	pegel := -1
+	if pegelS != "--" {
+		var err error
+		pegel, err = strconv.Atoi(pegelS)
+		if err != nil {
+			return TimeValue{}, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", pegelS, line)
+		}
 	}
 
 	// parse date

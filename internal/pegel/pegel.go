@@ -82,53 +82,52 @@ func splitLine(line string) []string {
 
 var reTimeValue = regexp.MustCompile(`^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}) [A-Z]+$`)
 
-func parseLine(line string) (TimeValue, error) {
+func parseLine(line string) (TimeValue, bool, error) {
 	tokens := splitLine(line)
 
 	if len(tokens) < 7 {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (not enough tokens): %v", line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (not enough tokens): %v", line)
 	}
 
 	pegelS := tokens[4]
 	dateS := tokens[6]
 
 	// parse pegel
-	pegel := -1
-	if pegelS != "--" {
-		var err error
-		pegel, err = strconv.Atoi(pegelS)
-		if err != nil {
-			return TimeValue{}, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", pegelS, line)
-		}
+	if pegelS == "--" {
+		return TimeValue{}, true, fmt.Errorf("empty pegel value: %v", line)
+	}
+	pegel, err := strconv.Atoi(pegelS)
+	if err != nil {
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid pegel '%s'): %v", pegelS, line)
 	}
 
 	// parse date
 	m := reTimeValue.FindStringSubmatch(dateS)
 	if m == nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid date '%s'): %v", dateS, line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid date '%s'): %v", dateS, line)
 	}
 	day, err := strconv.Atoi(m[1])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid day '%s'): %v", m[1], line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid day '%s'): %v", m[1], line)
 	}
 	month, err := strconv.Atoi(m[2])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid month '%s'): %v", m[2], line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid month '%s'): %v", m[2], line)
 	}
 	year, err := strconv.Atoi(m[3])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid year '%s'): %v", m[3], line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid year '%s'): %v", m[3], line)
 	}
 	hh, err := strconv.Atoi(m[4])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid hour '%s'): %v", m[4], line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid hour '%s'): %v", m[4], line)
 	}
 	mm, err := strconv.Atoi(m[5])
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot parse data line (invalid minute '%s'): %v", m[5], line)
+		return TimeValue{}, false, fmt.Errorf("cannot parse data line (invalid minute '%s'): %v", m[5], line)
 	}
 
-	return TimeValue{time.Date(year, time.Month(month), day, hh, mm, 0, 0, time.UTC), int64(pegel)}, nil
+	return TimeValue{time.Date(year, time.Month(month), day, hh, mm, 0, 0, time.UTC), int64(pegel)}, false, nil
 }
 
 func getMtime(filePath string) (time.Time, error) {
@@ -174,11 +173,11 @@ type PegelData struct {
 	Chart []TimeValue
 }
 
-func GetPegel(dataDir string) (TimeValue, error) {
+func GetPegel(dataDir string) (TimeValue, bool, error) {
 	cacheFilePath := filepath.Join(dataDir, "cache")
 	data, err := downloadOrCache("https://www.hvz.baden-wuerttemberg.de/js/hvz_peg_stmn.js", cacheFilePath)
 	if err != nil {
-		return TimeValue{}, fmt.Errorf("cannot download pegel data: %w", err)
+		return TimeValue{}, false, fmt.Errorf("cannot download pegel data: %w", err)
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -188,7 +187,7 @@ func GetPegel(dataDir string) (TimeValue, error) {
 		}
 	}
 
-	return TimeValue{}, fmt.Errorf("cannot find ebnet/dreisam in pegel data")
+	return TimeValue{}, false, fmt.Errorf("cannot find ebnet/dreisam in pegel data")
 }
 
 var reLine = regexp.MustCompile(`^(\d\d\d\d-\d\d-\d\d \d\d:\d\d);(\d+)$`)
@@ -258,16 +257,16 @@ func writeData(path string, data []TimeValue) error {
 	return nil
 }
 
-func GetPegelData(dataDir string) (PegelData, error) {
-	pegel, err := GetPegel(dataDir)
-	if err != nil {
-		return PegelData{}, err
+func GetPegelData(dataDir string) (PegelData, bool, error) {
+	pegel, empty, err := GetPegel(dataDir)
+	if err != nil || empty {
+		return PegelData{}, empty, err
 	}
 
 	historyPath := filepath.Join(dataDir, "history")
 	data, err := readData(historyPath)
 	if err != nil {
-		return PegelData{}, err
+		return PegelData{}, false, err
 	}
 
 	ldata := len(data)
@@ -276,7 +275,7 @@ func GetPegelData(dataDir string) (PegelData, error) {
 	}
 
 	if err := writeData(historyPath, data); err != nil {
-		return PegelData{}, err
+		return PegelData{}, false, err
 	}
 
 	ldata = len(data)
@@ -293,5 +292,5 @@ func GetPegelData(dataDir string) (PegelData, error) {
 		}
 	}
 
-	return PegelData{pegel, trend, chart}, nil
+	return PegelData{pegel, trend, chart}, false, nil
 }

@@ -68,7 +68,10 @@ func main() {
 	dataDir := os.Args[2]
 
 	// update & get data
-	data, err := pegel.GetPegelData(dataDir)
+	data, empty, err := pegel.GetPegelData(dataDir)
+	if empty {
+		return
+	}
 	if err != nil {
 		panic(fmt.Errorf("failed to get pegel data: %w", err))
 	}
